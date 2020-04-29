@@ -4,6 +4,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 type (
@@ -65,7 +66,28 @@ type (
 	context struct {
 		request  *http.Request
 		response *Response
-
-		handler HandlerFunc
+		path     string
+		pnames   []string
+		pvalues  []string
+		query    url.Values
+		handler  HandlerFunc
+		store    Map
+		echo     *Echo
+		logger   Logger
+		lock     sync.RWMutex
 	}
 )
+
+const (
+	defaultMemory = 32 << 20
+	indexPage     = "index.html"
+	defaultIndent = "  "
+)
+
+func (c *context) Logger() Logger {
+	res := c.logger
+	if res != nil {
+		return res
+	}
+	return c.echo.Logger
+}

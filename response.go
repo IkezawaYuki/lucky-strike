@@ -35,6 +35,12 @@ func (r *Response) After(fn func()) {
 
 func (r *Response) WriteHeader(code int) {
 	if r.Committed {
-		r.echo.Logger
+		r.echo.Logger.Warn("response already committed")
 	}
+	for _, fn := range r.beforeFuncs {
+		fn()
+	}
+	r.Status = code
+	r.Writer.WriteHeader(code)
+	r.Committed = true
 }

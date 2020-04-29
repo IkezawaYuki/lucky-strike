@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	echo "github.com/IkezawaYuki/lucky-strike"
 	"github.com/labstack/gommon/color"
 	"github.com/valyala/fasttemplate"
 	"io"
 	"sync"
+	"time"
 )
 
 type (
@@ -37,5 +39,50 @@ func Logger() echo.MiddlewareFunc {
 }
 
 func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
+	if config.Skipper == nil {
+		config.Skipper = DefaultLoggerConfig.Skipper
+	}
+	if config.Format == "" {
+		config.Format = DefaultLoggerConfig.Format
+	}
+	if config.Output == nil {
+		config.Output = DefaultLoggerConfig.Output
+	}
 
+	config.template = fasttemplate.New(config.Format, "${", "}")
+	config.colorer = color.New()
+	config.colorer.SetOutput(config.Output)
+	config.pool = &sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, 256))
+		},
+	}
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
+			req := c.Request()
+			res := c.Response()
+			start := time.Now()
+			if err = next(c); err != nil {
+				c.Error(err)
+			}
+			stop := time.Now()
+			buf := config.pool.Get().(*bytes.Buffer)
+			buf.Reset()
+			defer config.pool.Put(buf)
+
+			if _, err = config.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+
+			}); err != nil {
+				return
+			}
+
+			if config.Output == nil {
+				_, err = c.Logger().Output()
+			}
+		}
+	}
 }
