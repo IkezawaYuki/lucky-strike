@@ -21,6 +21,7 @@ type (
 		SetPath(p string)
 		Param(name string) string
 		ParamNames() []string
+		ParamValues() []string
 		SetParamValues(values ...string) []string
 		QueryParam(name string) string
 		QueryParams() url.Values
@@ -83,6 +84,37 @@ const (
 	indexPage     = "index.html"
 	defaultIndent = "  "
 )
+
+func (c *context) writeContentType(value string) {
+	header := c.Response().Header()
+	if header.Get(HeaderContentType) == "" {
+		header.Set(HeaderContentType, value)
+	}
+}
+
+func (c *context) Request() *http.Request {
+	return c.request
+}
+
+func (c *context) SetRequest(r *http.Request) {
+	c.request = r
+}
+
+func (c *context) Response() *Response {
+	return c.response
+}
+
+func (c *context) SetResponse(r *Response) {
+	c.response = r
+}
+
+func (c *context) IsTLS() bool {
+	return c.request.TLS != nil
+}
+
+func (c *context) IsWebSocket() bool {
+	upgrade := c.request.Header.Get(HeaderUpgrade)
+}
 
 func (c *context) Logger() Logger {
 	res := c.logger
