@@ -3,7 +3,9 @@ package echo
 import (
 	"encoding"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -42,8 +44,24 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 	switch {
 	case strings.HasPrefix(ctype, MIMEApplicationJSON):
 		if err := json.NewDecoder(req.Body).Decode(i); err != nil {
-			// todo
+			if ute, ok := err.(*json.UnmarshalTypeError); ok {
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unmarshal type error: expected=%v, got=%v, field=%v, offset=%v", ute.Type, ute.Value, ute.Field, ute.Offset)).SetInterval(err)
+			} else if se, ok := err.(*json.SyntaxError); ok {
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())).SetInterval(err)
+			}
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInterval(err)
 		}
+	case strings.HasPrefix(ctype, MIMEApplicationXML), strings.HasPrefix(ctype, MIMETextXML):
+		if err := xml.NewDecoder(req.Body).Decode(i); err != nil {
+			if ute, ok := err.(*xml.UnsupportedTypeError); ok {
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported type error: type=%v, error=%v", ute.Type, ute.Error())).SetInterval(err)
+			} else if se, ok := err.(*xml.SyntaxError); ok {
+				return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Line, se.Error())).SetInterval(err)
+			}
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInterval(err)
+		}
+	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
+
 	}
 }
 
