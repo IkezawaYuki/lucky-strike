@@ -149,5 +149,5 @@ func (c *context) RealIP() string {
 	if c.echo != nil && c.echo.IPExtractor != nil {
 		return c.echo.IPExtractor(c.request)
 	}
-
+	if ip := 
 }
