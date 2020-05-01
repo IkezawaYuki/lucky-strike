@@ -61,8 +61,17 @@ func (b *DefaultBinder) Bind(i interface{}, c Context) (err error) {
 			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInterval(err)
 		}
 	case strings.HasPrefix(ctype, MIMEApplicationForm), strings.HasPrefix(ctype, MIMEMultipartForm):
-
+		params, err := c.FormParams()
+		if err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInterval(err)
+		}
+		if err = b.bindData(i, params, "form"); err != nil {
+			return NewHTTPError(http.StatusBadRequest, err.Error()).SetInterval(err)
+		}
+	default:
+		return ErrUnsupportedMediaType
 	}
+	return
 }
 
 func (b *DefaultBinder) bindData(ptr interface{}, data map[string][]string, tag string) error {

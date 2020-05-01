@@ -4,6 +4,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -114,6 +115,7 @@ func (c *context) IsTLS() bool {
 
 func (c *context) IsWebSocket() bool {
 	upgrade := c.request.Header.Get(HeaderUpgrade)
+	return strings.ToLower(upgrade) == "websocket"
 }
 
 func (c *context) Logger() Logger {
@@ -122,4 +124,30 @@ func (c *context) Logger() Logger {
 		return res
 	}
 	return c.echo.Logger
+}
+
+func (c *context) Scheme() string {
+	if c.IsTLS() {
+		return "https"
+	}
+	if scheme := c.request.Header.Get(HeaderXForwardedProto); scheme != "" {
+		return scheme
+	}
+	if scheme := c.request.Header.Get(HeaderXForwardedProtocol); scheme != "" {
+		return scheme
+	}
+	if ssl := c.request.Header.Get(HeaderXForwardedSsl); ssl != "" {
+		return "https"
+	}
+	if scheme := c.request.Header.Get(HeaderXUrlScheme); scheme != "" {
+		return scheme
+	}
+	return "http"
+}
+
+func (c *context) RealIP() string {
+	if c.echo != nil && c.echo.IPExtractor != nil {
+		return c.echo.IPExtractor(c.request)
+	}
+
 }
