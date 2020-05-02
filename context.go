@@ -2,6 +2,7 @@ package echo
 
 import (
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -149,5 +150,39 @@ func (c *context) RealIP() string {
 	if c.echo != nil && c.echo.IPExtractor != nil {
 		return c.echo.IPExtractor(c.request)
 	}
-	if ip := 
+	if ip := c.request.Header.Get(HeaderXForwardedFor); ip != "" {
+		return strings.Split(ip, ", ")[0]
+	}
+	if ip := c.request.Header.Get(HeaderXRealIP); ip != "" {
+		return ip
+	}
+	ra, _, _ := net.SplitHostPort(c.request.RemoteAddr)
+	return ra
+}
+
+func (c *context) Path() string {
+	return c.path
+}
+
+func (c *context) SetPath(p string) {
+	c.path = p
+}
+
+func (c *context) Param(name string) string {
+	for i, n := range c.pnames {
+		if i < len(c.pvalues) {
+			if n == name {
+				return c.pvalues[i]
+			}
+		}
+	}
+	return ""
+}
+
+func (c *context) ParamNames() []string {
+	return c.pnames
+}
+
+func (c *context) ParamValues() []string {
+	return c.pvalues[:len(c.pnames)]
 }
