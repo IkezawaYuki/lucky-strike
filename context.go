@@ -1,6 +1,8 @@
 package echo
 
 import (
+	"bytes"
+	"encoding/json"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -185,4 +187,127 @@ func (c *context) ParamNames() []string {
 
 func (c *context) ParamValues() []string {
 	return c.pvalues[:len(c.pnames)]
+}
+
+func (c *context) SetParamValues(values ...string) {
+	c.pvalues = values
+}
+
+func (c *context) QueryParam(name string) string {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query.Get(name)
+}
+
+func (c *context) QueryParams() url.Values {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query
+}
+
+func (c *context) QueryString() string {
+	return c.request.URL.RawQuery
+}
+
+func (c *context) FormValue(name string) string {
+	return c.request.FormValue(name)
+}
+
+func (c *context) FormParams() (url.Values, error) {
+	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
+		if err := c.request.ParseMultipartForm(defaultMemory); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := c.request.ParseForm(); err != nil {
+			return nil, err
+		}
+	}
+	return c.request.Form, nil
+}
+
+func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
+	f, fh, err := c.request.FormFile(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return fh, nil
+}
+
+func (c *context) MultipartForm() (*multipart.Form, error) {
+	err := c.request.ParseMultipartForm(defaultMemory)
+	return c.request.MultipartForm, err
+}
+
+func (c *context) Cookie(name string) (*http.Cookie, error) {
+	return c.request.Cookie(name)
+}
+
+func (c *context) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(c.Response(), cookie)
+}
+
+func (c *context) Cookies() []*http.Cookie {
+	return c.request.Cookies()
+}
+
+func (c *context) Get(key string) interface{} {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.store[key]
+}
+
+func (c *context) Set(key string, val interface{}) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.store == nil {
+		c.store = make(Map)
+	}
+	c.store[key] = val
+}
+
+func (c *context) Bind(i interface{}) error {
+	return c.echo.Binder.Bind(i, c)
+}
+
+func (c *context) Validate(i interface{}) error {
+	if c.echo.Validator == nil {
+		return ErrValidatorNotRegistered
+	}
+	return c.echo.Validator.Validate(i)
+}
+
+func (c *context) Render(code int, name string, data interface{}) (err error) {
+	if c.echo.Renderer == nil {
+		return ErrRendererNotRegistered
+	}
+	buf := new(bytes.Buffer)
+	if err := c.echo.Renderer.Render(buf, name, data, c); err != nil {
+		return
+	}
+	return c.HTMLBlob(code, buf.Bytes())
+}
+
+func (c *context) HTML(code int, html string) (err error) {
+	return c.HTMLBlob(code, []byte(html))
+}
+
+func (c *context) HTMLBlob(code int, b []byte) (err error) {
+	return c.Blob(code, MIMETextHTMLCharsetUTF8, b)
+}
+
+func (c *context) String(code int, s string) (err error) {
+	return c.Blob(code, MIMETextHTMLCharsetUTF8, []byte(s))
+}
+
+func (c *context) jsonPBlob(code int, callback string, i interface{}) (err error) {
+	enc := json.NewEncoder(c.response)
+	_, pretty := c.QueryParams()["pretty"]
+	if c.echo.Debug || pretty {
+
+	}
 }
