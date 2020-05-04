@@ -72,6 +72,18 @@ type (
 )
 
 const (
+	CONNECT = http.MethodConnect
+	DELETE  = http.MethodDelete
+	GET     = http.MethodGet
+	HEAD    = http.MethodHead
+	OPTIONS = http.MethodOptions
+	PATCH   = http.MethodPatch
+	POST    = http.MethodPost
+	PUT     = http.MethodPut
+	TRACE   = http.MethodTrace
+)
+
+const (
 	MIMEApplicationJSON                  = "application/json"
 	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
 	MIMEApplicationJavaScript            = "application/javascript"
@@ -147,6 +159,17 @@ const (
 	HeaderReferrerPolicy                  = "Referrer-Policy"
 )
 
+const (
+	Version = "0.0.0"
+	website = "https://echo.labstack.com"
+	banner  = `
+    __
+   | |    ___ _   _____  
+   | |__ | _ |\ _ /| _ | 
+   |____||___| \_/ |___  %s
+`
+)
+
 var (
 	methods = [...]string{
 		http.MethodConnect,
@@ -191,6 +214,17 @@ var (
 		return ErrMethodNotAllowed
 	}
 )
+
+func New() (e *Echo) {
+	e = &Echo{
+		Server:         nil,
+		TLSServer:      nil,
+		AutoTLSManager: autocert.Manager{},
+		Logger:         nil,
+		colorer:        color.New(),
+		maxParam:       new(int),
+	}
+}
 
 func NewHTTPError(code int, message ...interface{}) *HTTPError {
 	he := &HTTPError{
