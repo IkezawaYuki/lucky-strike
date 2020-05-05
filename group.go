@@ -73,10 +73,10 @@ func (g *Group) Match(methods []string, path string, handler HandlerFunc, middle
 	return routes
 }
 
-func (g *Group) Group(prefix string, middlewareFunc ...MiddlewareFunc) {
+func (g *Group) Group(prefix string, middlewareFunc ...MiddlewareFunc) (sg *Group) {
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middlewareFunc))
-	m = append(m, g.middleware)
-	m = append(m, middlewareFunc)
+	m = append(m, g.middleware...)
+	m = append(m, middlewareFunc...)
 	sg = g.echo.Group(g.prefix+prefix, m...)
 	sg.host = g.host
 	return

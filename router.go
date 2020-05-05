@@ -1,6 +1,9 @@
 package echo
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 type (
 	Router struct {
@@ -85,7 +88,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			r.insert(method, path[:i+1], h, akind, ppath, pnames)
 		}
 	}
-	r.insert(method, path[:i+1], h, akind, ppath, pnames)
+	r.insert(method, path, h, skind, ppath, pnames)
 }
 
 func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
@@ -243,7 +246,7 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 	}
 }
 
-func (n *node) finaHandler(method string) HandlerFunc {
+func (n *node) findHandler(method string) HandlerFunc {
 	switch method {
 	case http.MethodConnect:
 		return n.methodHandler.connect
@@ -274,9 +277,157 @@ func (n *node) finaHandler(method string) HandlerFunc {
 
 func (n *node) checkMethodNotAllowed() HandlerFunc {
 	for _, m := range methods {
-		if h := n.finaHandler(m); h != nil {
+		if h := n.findHandler(m); h != nil {
 			return MethodNotAllowedHandler
 		}
 	}
 	return NotFoundHandler
+}
+
+func (r *Router) Find(method, path string, c Context) {
+	ctx := c.(*context)
+	ctx.path = path
+	cn := r.tree
+
+	var (
+		search  = path
+		child   *node
+		n       int
+		nk      kind
+		nn      *node
+		ns      string
+		pvalues = ctx.pvalues
+	)
+
+	for {
+		if search == "" {
+			break
+		}
+		pl := 0
+		l := 0
+
+		if cn.label != ':' {
+			sl := len(search)
+			pl = len(cn.prefix)
+
+			max := pl
+			if sl < max {
+				max = sl
+			}
+			for ; l < max && search[l] == cn.prefix[l]; l++ {
+			}
+		}
+
+		if l == pl {
+			search = search[l:]
+			if search == "" && (nn == nil || cn.parent == nil || cn.ppath != "") {
+				break
+			}
+		}
+
+		if l != pl || search == "" {
+			if nn == nil {
+				return
+			}
+			cn = nn
+			search = ns
+			if nk == pkind {
+				goto Param
+			} else if nk == akind {
+				goto Any
+			}
+		}
+
+		if child = cn.findChild(search[0], skind); child != nil {
+			if cn.prefix[len(cn.prefix)-1] == '/' {
+				nk = pkind
+				nn = cn
+				ns = search
+			}
+			cn = child
+			continue
+		}
+
+	Param:
+		if child = cn.findChildByKind(pkind); child != nil {
+			if len(pvalues) == n {
+				continue
+			}
+			if cn.prefix[len(cn.prefix)-1] == '/' {
+				nk = akind
+				nn = cn
+				ns = search
+			}
+
+			cn = child
+			i, l := 0, len(search)
+			for ; i < l && search[i] != '/'; i++ {
+
+			}
+			pvalues[n] = search[:i]
+			n++
+			search = search[i:]
+			continue
+		}
+	Any:
+		if cn = cn.findChildByKind(akind); cn != nil {
+			pvalues[len(cn.pnames)-1] = search
+			break
+		}
+
+		if nn != nil {
+			search = ns
+			np := nn.parent
+			if cn = nn.findChildByKind(pkind); cn != nil {
+				pos := strings.IndexByte(ns, '/')
+				if pos == -1 {
+					pvalues[len(cn.pnames)-1] = search
+					break
+				} else if pos > 0 {
+					cn = nn
+					nn = nil
+					ns = ""
+					goto Param
+				}
+			}
+
+			for {
+				np = nn.parent
+				if cn = nn.findChildByKind(akind); cn != nil {
+					break
+				}
+				if np == nil {
+					break
+				}
+				var str strings.Builder
+				str.WriteString(nn.prefix)
+				str.WriteString(search)
+				search = str.String()
+				nn = np
+			}
+		}
+		return
+	}
+
+	ctx.handler = cn.findHandler(method)
+	ctx.path = cn.ppath
+	ctx.pnames = cn.pnames
+
+	if ctx.handler == nil {
+		ctx.handler = cn.checkMethodNotAllowed()
+
+		if cn = cn.findChildByKind(akind); cn == nil {
+			return
+		}
+
+		if h := cn.findHandler(method); h != nil {
+			ctx.handler = h
+		} else {
+			ctx.handler = cn.checkMethodNotAllowed()
+		}
+		ctx.path = cn.ppath
+		ctx.pnames = cn.pnames
+		pvalues[len(cn.pnames)-1] = ""
+	}
+	return
 }

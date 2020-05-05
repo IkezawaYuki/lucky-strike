@@ -465,7 +465,7 @@ func (c *context) Redirect(code int, url string) error {
 }
 
 func (c *context) Error(err error) {
-	c.echo.HttpErrorHandler(err, c)
+	c.echo.HTTPErrorHandler(err, c)
 }
 
 func (c *context) Handler() HandlerFunc {
