@@ -2,7 +2,10 @@ package middleware
 
 import (
 	echo "github.com/IkezawaYuki/lucky-strike"
+	"github.com/labstack/gommon/random"
+	"net/http"
 	"strings"
+	"time"
 )
 
 type (
@@ -71,6 +74,43 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 			req := c.Request()
+			k, err := c.Cookie(config.CookieName)
+			token := ""
+			if err != nil {
+				token = random.String(config.TokenLength)
+			} else {
+				token = k.Value
+			}
+			switch req.Method {
+			case http.MethodGet, http.MethodHead, http.MethodTrace:
+			default:
+				clientToken, err := extractor(c)
+				if err != nil {
+					return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+				}
+				if !validateCSRFToken(token, clientToken) {
+					return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
+				}
+			}
+
+			cookie := new(http.Cookie)
+			cookie.Name = config.CookieName
+			cookie.Value = token
+			if config.CookiePath != "" {
+				config.CookiePath = config.CookiePath
+			}
+			if config.CookieDomain != "" {
+				cookie.Domain = config.CookieDomain
+			}
+			cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
+			cookie.Secure = config.CookieSecure
+			cookie.HttpOnly = config.CookieHTTPOnly
+			c.SetCookie(cookie)
+
+			c.Set(config.ContextKey, token)
+
+			c.Response().Header().Add(echo.HeaderVary, echo.HeaderCookie)
+			return next(c)
 		}
 	}
 }
