@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"crypto/subtle"
+	"errors"
 	echo "github.com/IkezawaYuki/lucky-strike"
 	"github.com/labstack/gommon/random"
 	"net/http"
@@ -21,6 +23,7 @@ type (
 		CookieSecure   bool   `yaml:"cookie_secure"`
 		CookieHTTPOnly bool   `yaml:"cookie_http_only"`
 	}
+	csrfTokenExtractor func(echo.Context) (string, error)
 )
 
 var (
@@ -60,12 +63,12 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 	}
 
 	parts := strings.Split(config.TokenLookup, ":")
-	extractor := csrfTokenFromForm(parts[1])
+	extractor := csrfTokenFromHeader(parts[1])
 	switch parts[0] {
 	case "form":
 		extractor = csrfTokenFromForm(parts[1])
 	case "query":
-		extractor = csrfTokenFromForm(parts[1])
+		extractor = csrfTokenFromQuery(parts[1])
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -113,4 +116,34 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+func csrfTokenFromHeader(header string) csrfTokenExtractor {
+	return func(c echo.Context) (string, error) {
+		return c.Request().Header.Get(header), nil
+	}
+}
+
+func csrfTokenFromForm(param string) csrfTokenExtractor {
+	return func(c echo.Context) (string, error) {
+		token := c.FormValue(param)
+		if token == "" {
+			return "", errors.New("missing csrf token in the form parameter")
+		}
+		return token, nil
+	}
+}
+
+func csrfTokenFromQuery(param string) csrfTokenExtractor {
+	return func(c echo.Context) (string, error) {
+		token := c.QueryParam(param)
+		if token == "" {
+			return "", errors.New("mission csrf token in the query string")
+		}
+		return token, nil
+	}
+}
+
+func validateCSRFToken(token, clientToken string) bool {
+	return subtle.ConstantTimeCompare([]byte(token), []byte(clientToken)) == 1
 }
