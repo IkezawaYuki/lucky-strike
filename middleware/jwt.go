@@ -4,7 +4,6 @@ import (
 	"fmt"
 	echo "github.com/IkezawaYuki/lucky-strike"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/mitchellh/copystructure"
 	"net/http"
 	"reflect"
 	"strings"
@@ -163,6 +162,30 @@ func jwtFromHeader(header string, authScheme string) jwtExtractor {
 
 func jwtFromQuery(param string) jwtExtractor {
 	return func(c echo.Context) (string, error) {
+		token := c.QueryParam(param)
+		if token == "" {
+			return "", ErrJWTMissing
+		}
+		return token, nil
+	}
+}
 
+func jwtFromParam(param string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		token := c.Param(param)
+		if token == "" {
+			return "", ErrJWTMissing
+		}
+		return token, nil
+	}
+}
+
+func jwtFromCookie(name string) jwtExtractor {
+	return func(c echo.Context) (string, error) {
+		cookie, err := c.Cookie(name)
+		if err != nil {
+			return "", ErrJWTMissing
+		}
+		return cookie.Value, nil
 	}
 }
