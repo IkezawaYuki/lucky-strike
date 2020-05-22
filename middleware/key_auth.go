@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	echo "github.com/IkezawaYuki/lucky-strike"
 	"net/http"
 	"strings"
@@ -68,5 +69,38 @@ func KeyAuthWithConfig(config KeyAuthConfig) echo.MiddlewareFunc {
 }
 
 func keyFromHeader(header string, authScheme string) keyExtractor {
+	return func(c echo.Context) (string, error) {
+		auth := c.Request().Header.Get(header)
+		if auth == "" {
+			return "", errors.New("missing key in request header")
+		}
+		if header == echo.HeaderAuthorization {
+			l := len(authScheme)
+			if len(auth) > l+1 && auth[:l] == authScheme {
+				return auth[l+1:], nil
+			}
+			return "", errors.New("invalid key in the request header")
+		}
+		return auth, nil
+	}
+}
 
+func keyFromQuery(param string) keyExtractor {
+	return func(c echo.Context) (string, error) {
+		key := c.QueryParam(param)
+		if key == "" {
+			return "", errors.New("missing key in the query string")
+		}
+		return key, nil
+	}
+}
+
+func keyFromForm(param string) keyExtractor {
+	return func(c echo.Context) (string, error) {
+		key := c.FormValue(param)
+		if key == "" {
+			return "", errors.New("missing key in the form")
+		}
+		return key, nil
+	}
 }
