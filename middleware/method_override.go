@@ -48,6 +48,20 @@ func MethodOverrideWithConfig(config MethodOverrideConfig) echo.MiddlewareFunc {
 	}
 }
 
-func MethodFromForm(param string) MethodOverrideGetter {
+func MethodFromHeader(header string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.Request().Header.Get(header)
+	}
+}
 
+func MethodFromForm(param string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.FormValue(param)
+	}
+}
+
+func MethodFromQuery(param string) MethodOverrideGetter {
+	return func(c echo.Context) string {
+		return c.QueryParam(param)
+	}
 }
