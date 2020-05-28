@@ -61,5 +61,25 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 		defer in.Close()
 
 		out, err := net.Dial("tcp", t.URL.Host)
+		if err != nil {
+			c.Set("_error", fmt.Sprintf("proxy raw, hijack error=%v, url=%s", t.URL, err))
+			return
+		}
+		defer out.Close()
+
+		err = r.Write(out)
+		if err != nil {
+			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, dial error=%v, url=%s", t.URL, err)))
+			return
+		}
+		defer out.Close()
+
+		err = r.Write(out)
+		if err != nil {
+			c.Set("_error", echo.NewHTTPError(http.StatusBadGateway, fmt.Sprintf("proxy raw, request header copy error=%v, url=%s", t.URL, err)))
+			return
+		}
+
+		errCh := make(chan error, 2)
 	})
 }
