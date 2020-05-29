@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	echo "github.com/IkezawaYuki/lucky-strike"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -81,5 +82,35 @@ func proxyRaw(t *ProxyTarget, c echo.Context) http.Handler {
 		}
 
 		errCh := make(chan error, 2)
+		cp := func(dst io.Writer, src io.Reader) {
+			_, err = io.Copy(dst, src)
+			errCh <- err
+		}
+		go cp(out, in)
+		go cp(in, out)
+		err = <-errCh
+		if err != nil && err != io.EOF {
+			c.Set("_error", fmt.Errorf("proxy raw, copy body error=%v, url=%s", t.URL, err))
+		}
 	})
+}
+
+func NewRandomBalancer(targets []*ProxyTarget) ProxyBalancer {
+	b := &randomBalancer{
+		commonBalancer: new(commonBalancer),
+	}
+	b.targets = targets
+	return b
+}
+
+func (b *commonBalancer) AddTarget(target *ProxyTarget) bool {
+	for _, t := range b.targets {
+		if t.Name == target.Name {
+			return false
+		}
+	}
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.targets = append(b.targets, target)
+	return true
 }
