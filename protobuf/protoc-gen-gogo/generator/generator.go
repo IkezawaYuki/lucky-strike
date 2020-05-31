@@ -2,6 +2,7 @@ package generator
 
 import (
 	"bytes"
+	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	plugin_go "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 	"strconv"
@@ -60,7 +61,27 @@ func (e *EnumDescriptor) TypeName() (s []string) {
 	if e.parent == nil {
 		s = make([]string, 1)
 	} else {
+		pname := e.parent.TypeName()
+		s = make([]string, len(pname)+1)
+		copy(s, pname)
+	}
+	s[len(s)-1] = name
+	e.typename = s
+	return s
+}
 
+func (e *EnumDescriptor) alias() (s []string) {
+	s = e.TypeName()
+	if gogoproto.IsEnumCustomName(e.EnumDescriptorProto) {
+		s[len(s)-1] = gogoproto.GetEnumCustomName(e.EnumDescriptorProto)
+	}
+	return
+}
+
+func (e *EnumDescriptor) prefix() string {
+	typeName := e.alias()
+	if e.parent == nil {
+		return CamelCase(typeName[len(typeName)-1]) + "_"
 	}
 }
 
