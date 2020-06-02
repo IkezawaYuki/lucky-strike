@@ -114,7 +114,16 @@ type ExtensionDescriptor struct {
 }
 
 func (e *ExtensionDescriptor) TypeNme() (s []string) {
-
+	name := e.GetName()
+	if e.parent == nil {
+		s = make([]string, 1)
+	} else {
+		pname := e.parent.TypeName()
+		s = make([]string, len(pname)+1)
+		copy(s, pname)
+	}
+	s[len(s)-1] = name
+	return s
 }
 
 type FileDescriptor struct {
