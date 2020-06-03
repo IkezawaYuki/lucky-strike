@@ -42,17 +42,31 @@ func (c *common) proto3() bool {
 type Descriptor struct {
 	common
 	*descriptor.DescriptorProto
-	parent *Descriptor
-	nested []*Descriptor
-	enums  []*EnumDescriptor
-	ext    []*ExtensionDescriptor
+	parent   *Descriptor
+	nested   []*Descriptor
+	enums    []*EnumDescriptor
+	ext      []*ExtensionDescriptor
+	typename []string
+	index    int
+	path     string
+	group    bool
 }
 
 func (d *Descriptor) TypeName() []string {
 	if d.TypeName() != nil {
 		return d.typename
 	}
-
+	n := 0
+	for parent := d; parent != nil; parent = parent.parent {
+		n++
+	}
+	s := make([]string, n)
+	for parent := d; parent != nil; parent = parent.parent {
+		n--
+		s[n] = parent.GetName()
+	}
+	d.typename = s
+	return s
 }
 
 type EnumDescriptor struct {
@@ -124,6 +138,14 @@ func (e *ExtensionDescriptor) TypeNme() (s []string) {
 	}
 	s[len(s)-1] = name
 	return s
+}
+
+func (e *ExtensionDescriptor) DescName() string {
+	typeName := e.TypeName()
+	for i, s := range typeName {
+		typeName[i] = CamelCase(s)
+	}
+	return "E_" + strings.Join(typeName, "_")
 }
 
 type FileDescriptor struct {
