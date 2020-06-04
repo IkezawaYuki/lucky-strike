@@ -153,6 +153,12 @@ type FileDescriptor struct {
 	desc []*Descriptor
 }
 
+type Object interface {
+	GoImportPath() GoImportPath
+	TypeName() []string
+	File() *FileDescriptor
+}
+
 type Generator struct {
 	*bytes.Buffer
 
@@ -168,11 +174,24 @@ type Generator struct {
 
 	outputImportPath GoImportPath
 	allFiles         []*FileDescriptor
+	allFilesByName   map[string]*FileDescriptor
+	genFiles         []*FileDescriptor
+	file             *FileDescriptor
+	packageNames     map[GoImportPath]GoPackageName
+	usedPackages     map[GoPackageName]bool
+	addedImports     map[GoImportPath]bool
+	typeNameToObject map[string]Object
+	init
 }
 
 func New() *Generator {
 	g := new(Generator)
-
+	g.Buffer = new(bytes.Buffer)
+	g.Request = new(plugin_go.CodeGeneratorRequest)
+	g.Response = new(plugin_go.CodeGeneratorResponse)
+	g.writtenImports = make(map[string]bool)
+	g.addImports = make(map[GoImportPath]bool)
+	return g
 }
 
 func CamelCaseSlice(elem []string) string {
