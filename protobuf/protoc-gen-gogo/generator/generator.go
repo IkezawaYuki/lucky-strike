@@ -181,8 +181,23 @@ type Generator struct {
 	usedPackages     map[GoPackageName]bool
 	addedImports     map[GoImportPath]bool
 	typeNameToObject map[string]Object
-	init
+	init             []string
+	indent           string
+	pathType         pathType
+	writeOutput      bool
+	annotateCode     bool
+	annotations      []*descriptor.GeneratedCodeInfo_Annotation
+
+	customImports  []string
+	writtenImports map[string]bool
 }
+
+type pathType int
+
+const (
+	pathTypeImport pathType = iota
+	pathTypeSourceRelative
+)
 
 func New() *Generator {
 	g := new(Generator)
@@ -190,7 +205,7 @@ func New() *Generator {
 	g.Request = new(plugin_go.CodeGeneratorRequest)
 	g.Response = new(plugin_go.CodeGeneratorResponse)
 	g.writtenImports = make(map[string]bool)
-	g.addImports = make(map[GoImportPath]bool)
+	g.addedImports = make(map[GoImportPath]bool)
 	return g
 }
 
