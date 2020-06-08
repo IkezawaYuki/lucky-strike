@@ -1,88 +1,66 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"io/ioutil"
+	"strings"
+)
 
-type Sized interface {
-	GetWidth() int
-	SetWidth(width int)
-	GetHeight() int
-	SetHeight(height int)
+var entryCount = 0
+
+type Journal struct {
+	entries []string
 }
 
-type Rectangle struct {
-	width, height int
+func (j *Journal) AddEntry(text string) int {
+	entryCount++
+	entry := fmt.Sprintf("%d: %s", entryCount, text)
+	j.entries = append(j.entries, entry)
+	return entryCount
 }
 
-func (r *Rectangle) GetWidth() int {
-	return r.width
+func (j *Journal) String() string {
+	return strings.Join(j.entries, "\n")
 }
 
-func (r *Rectangle) SetWidth(width int) {
-	r.width = width
+func (j *Journal) Save(filename string) {
+	_ = ioutil.WriteFile(filename, []byte(j.String()), 0644)
 }
 
-func (r *Rectangle) GetHeight() int {
-	return r.height
+func (j *Journal) RemoveEntry(index int) {
+	// ...
 }
 
-func (r *Rectangle) SetHeight(height int) {
-	r.height = height
+func (j *Journal) Load(filename string) {
+
 }
 
-func UseIt(sized Sized) {
-	width := sized.GetWidth()
-	sized.SetHeight(10)
-	expectedArea := 10 * width
-	actualArea := sized.GetWidth() * sized.GetHeight()
-	fmt.Print("Expected an area of ", expectedArea,
-		" but got ", actualArea, "\n")
+var LineSeparator = "\n"
+
+func SaveToFile(j *Journal, filename string) {
+	_ = ioutil.WriteFile(filename,
+		[]byte(strings.Join(j.entries, LineSeparator)), 0644)
 }
 
-type Square struct {
-	Rectangle
+type Persistence struct {
+	lineSeparator string
 }
 
-func NewSquare(size int) *Square {
-	sq := Square{}
-	sq.width = size
-	sq.height = size
-	return &sq
-}
-
-func (s *Square) SetWidth(width int) {
-	s.width = width
-	s.height = width
-}
-
-func (s *Square) SetHeight(height int) {
-	s.width = height
-	s.height = height
-}
-
-func (s *Square) GetWidth() int {
-	return s.width
-}
-
-func (s *Square) GetHeight() int {
-	return s.height
-}
-
-type Square2 struct {
-	size int
-}
-
-func (s *Square2) Rectangle() Rectangle {
-	return Rectangle{s.size, s.size}
+func (p *Persistence) SaveToFile(j *Journal, filename string) {
+	if err := ioutil.WriteFile(filename,
+		[]byte(strings.Join(j.entries, p.lineSeparator)), 0644); err != nil {
+		fmt.Println(err)
+	}
 }
 
 func main() {
-	rc := &Rectangle{2, 3}
-	UseIt(rc)
+	j := Journal{}
+	j.AddEntry("I cried today")
+	j.AddEntry("I ate a bug")
+	fmt.Println(j.String())
 
-	sq := NewSquare(5)
-	UseIt(sq)
-
-	s := &Square2{5}
-	s2 := s.Rectangle()
-	UseIt(&s2)
+	p := Persistence{
+		"\n",
+	}
+	p.SaveToFile(&j, "journal.txt")
 }
