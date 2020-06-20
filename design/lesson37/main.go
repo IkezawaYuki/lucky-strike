@@ -18,7 +18,7 @@ type RasterRenderer struct {
 }
 
 func (r *RasterRenderer) RenderCircle(radius float32) {
-	fmt.Println("Drasing pixels for circle of radius", radius)
+	fmt.Println("Drawing pixels for circle of radius", radius)
 }
 
 type Circle struct {
@@ -42,8 +42,8 @@ func (c *Circle) Resize(factor float32) {
 }
 
 func main() {
-	//raster := RasterRenderer{}
-	vector := VectorRenderer{}
-	circle := NewCircle(&vector, 5)
+	raster := RasterRenderer{}
+	//vector := VectorRenderer{}
+	circle := NewCircle(&raster, 5)
 	circle.Draw()
 }
