@@ -22,7 +22,7 @@ var (
 	logger      hclog.Logger
 	logWriter   io.Writer
 	panics      = &panicRecorder{
-		panic:    make(map[string][]string),
+		panics:   make(map[string][]string),
 		maxLines: 100,
 	}
 )

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/IkezawaYuki/lucky-strike/internal/logging"
 	"github.com/mitchellh/panicwrap"
 	"log"
 	"os"
@@ -32,8 +33,9 @@ func wrappedMain() int {
 			defer f.Close()
 
 			log.Printf("[DEBUG] Adding temp file log sink: %s", f.Name())
-		} else {
 			logging.RegisterSink(f)
+		} else {
+			// todo
 		}
 	}
 }
