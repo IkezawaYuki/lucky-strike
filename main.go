@@ -33,7 +33,7 @@ func wrappedMain() int {
 
 			log.Printf("[DEBUG] Adding temp file log sink: %s", f.Name())
 		} else {
-
+			logging.RegisterSink(f)
 		}
 	}
 }
