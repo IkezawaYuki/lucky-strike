@@ -9,3 +9,10 @@ func configureOutputHandle(f *os.File) (*OutputStream, error) {
 		getColumns: getColumnsGolangXTerm,
 	}, nil
 }
+
+func configureInputHandle(f *os.File) (*InputStream, error) {
+	return &InputStream{
+		File:       f,
+		isTerminal: isTerminalGolangXTerm,
+	}, nil
+}
