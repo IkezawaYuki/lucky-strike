@@ -24,5 +24,12 @@ func configureOutputHandle(f *os.File) (*OutputStream, error) {
 			return ret, nil
 		}
 
+	} else if isatty.IsCygwinTerminal(fd) {
+		ret.isTerminal = staticTrue
+		return ret, nil
 	}
+
+	return ret, nil
 }
+
+const CP_UTF8 = 65001
