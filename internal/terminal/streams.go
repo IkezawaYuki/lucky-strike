@@ -10,4 +10,8 @@ type Streams struct {
 
 func Init() (*Streams, error) {
 	stderr, err := configureOutputHandle(os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
 }

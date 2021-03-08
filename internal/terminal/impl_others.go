@@ -1,6 +1,9 @@
 package terminal
 
-import "os"
+import (
+	"golang.org/x/term"
+	"os"
+)
 
 func configureOutputHandle(f *os.File) (*OutputStream, error) {
 	return &OutputStream{
