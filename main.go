@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/IkezawaYuki/lucky-strike/internal/logging"
+	"github.com/IkezawaYuki/lucky-strike/internal/terminal"
 	"github.com/hashicorp/terraform/version"
 	"github.com/mitchellh/panicwrap"
 	"log"
@@ -14,7 +16,8 @@ var Version = version.Version
 var VersionPrerelease = version.Prerelease
 
 const (
-	envTempLogPath = "TF_TEMP_LOG_PATH"
+	envTempLogPath                 = "TF_TEMP_LOG_PATH"
+	envTerminalPanicwrapWorkaround = "TF_PANICWRAP_STDERR"
 )
 
 func main() {
@@ -51,5 +54,15 @@ func wrappedMain() int {
 	log.Printf("[INFO] CLI args: %#v", os.Args)
 
 	var streamState *terminal.PrePanicwrapState
-
+	if raw := os.Getenv(envTerminalPanicwrapWorkaround); raw != "" {
+		streamState = &terminal.PrePanicwrapState{}
+		if _, err := fmt.Sscan(raw, "%t:%d", &streamState.StderrIsTerminal, &streamState.StderrWidth); err != nil {
+			log.Printf("[WARN] %s is set but is incorrectly-formatted: %s", envTerminalPanicwrapWorkaround, err)
+			streamState = nil
+		}
+		streams, err := terminal.ReinitInsidePanicwrap(streamState)
+		if err != nil {
+			Ui.Error
+		}
+	}
 }
