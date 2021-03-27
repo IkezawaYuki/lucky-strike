@@ -6,6 +6,7 @@ import (
 	"github.com/apparentlymart/go-versions/versions/constraints"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform/addrs"
+	"runtime"
 	"strings"
 )
 
@@ -94,4 +95,48 @@ func ParsePlatform(str string) (Platform, error) {
 		OS:   os,
 		Arch: arch,
 	}, nil
+}
+
+var CurrentPlatform = Platform{
+	OS:   runtime.GOOS,
+	Arch: runtime.GOARCH,
+}
+
+type PackageMeta struct {
+	Provider         addrs.Provider
+	Version          Version
+	ProtocolVersions VersionList
+	TargetPlatform   Platform
+	Filename         string
+	Location         PackageLocation
+	Authentication   PackageAuthentication
+}
+
+func (m PackageMeta) UnpackedDirectoryPath(baseDir string) string {
+	return UnpackedDirectoryPathForPackage(baseDir, m.Provider, m.Version, m.TargetPlatform)
+}
+
+func (m PackageMeta) PackedFilePath(baseDir string) string {
+	return PackedFilePathForPatckage(baseDir, m.Provider, m.Version, m.TargetPlatform)
+}
+
+func (m PackageMeta) AcceptableHashes() []Hash {
+	auth, ok := m.Authentication.(PackageAuthenticationHashes)
+	if !ok {
+		return nil
+	}
+	return auth.AccepableHashes()
+}
+
+type PackageLocation interface {
+	packageLocation()
+	String() string
+}
+
+type PackageLocalArchive string
+
+func (p PackageLocalArchive) packageLocation() {}
+
+func (p PackageLocalArchive) String() string {
+	return string(p)
 }
