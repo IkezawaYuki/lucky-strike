@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform/addrs"
 	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -112,6 +113,19 @@ type PackageMeta struct {
 	Authentication   PackageAuthentication
 }
 
+func (m PackageMeta) LessThan(other PackageMeta) bool {
+	switch {
+	case m.Provider != other.Provider:
+		return m.Provider.LessThan(other.Provider)
+	case m.TargetPlatform != other.TargetPlatform:
+		return m.TargetPlatform.LessThan(other.TargetPlatform)
+	case m.Version != other.Version:
+		return m.Version.LessThan(other.Version)
+	default:
+		return false
+	}
+}
+
 func (m PackageMeta) UnpackedDirectoryPath(baseDir string) string {
 	return UnpackedDirectoryPathForPackage(baseDir, m.Provider, m.Version, m.TargetPlatform)
 }
@@ -139,4 +153,44 @@ func (p PackageLocalArchive) packageLocation() {}
 
 func (p PackageLocalArchive) String() string {
 	return string(p)
+}
+
+type PackageLocalDir string
+
+func (p PackageLocalDir) packageLocation() {}
+
+func (p PackageLocalDir) String() string { return string(p) }
+
+type PackageHTTPURL string
+
+func (p PackageHTTPURL) packageLocation() {}
+
+func (p PackageHTTPURL) String() string { return string(p) }
+
+type PackageMetaList []PackageMeta
+
+func (l PackageMetaList) Len() int {
+	return len(l)
+}
+
+func (l PackageMetaList) Less(i, j int) bool {
+	return l[i].LessThan(l[j])
+}
+
+func (l PackageMetaList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func (l PackageMetaList) Sort() {
+	sort.Stable(l)
+}
+
+func (l PackageMetaList) FilterPlatform(target Platform) PackageMetaList {
+	var ret PackageMetaList
+	for _, m := range l {
+		if m.TargetPlatform == target {
+			ret = append(ret, m)
+		}
+	}
+	return ret
 }
