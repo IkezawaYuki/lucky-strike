@@ -194,3 +194,29 @@ func (l PackageMetaList) FilterPlatform(target Platform) PackageMetaList {
 	}
 	return ret
 }
+
+func (l PackageMetaList) FilterProviderExactVersion(provider addrs.Provider, version Version) PackageMetaList {
+	var ret PackageMetaList
+	for _, m := range l {
+		if m.Provider == provider && m.Version == version {
+			ret = append(ret, m)
+		}
+	}
+	return ret
+}
+
+func (l PackageMetaList) FilterProviderPlatformExactVersion(provider addrs.Provider, platform Platform, version Version) PackageMetaList {
+	var ret PackageMetaList
+	for _, m := range l {
+		if m.Provider == provider && m.Version == version && m.TargetPlatform == platform {
+			ret = append(ret, m)
+		}
+	}
+	return ret
+}
+
+func VersionConstraintsString(spec VersionConstraints) string {
+	if len(spec) == 0 {
+
+	}
+}
