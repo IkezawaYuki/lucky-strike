@@ -3,6 +3,7 @@ package getproviders
 import (
 	"crypto"
 	"crypto/sha256"
+	"fmt"
 )
 
 type packageAuthenticationResult int
@@ -98,7 +99,43 @@ func (checks packageAuthenticationAll) AcceptableHashes() []Hash {
 }
 
 type packageHashAuthentication struct {
-	Requirements []Hash
-	AllHashes    []Hash
-	Platform     Platform
+	RequiredHashes []Hash
+	AllHashes      []Hash
+	Platform       Platform
+}
+
+func NewPackageHashAuthentication(platform Platform, validHashes []Hash) PackageAuthentication {
+	requiredHashes := PreferredHashes(validHashes)
+	return packageHashAuthentication{
+		RequiredHashes: requiredHashes,
+		AllHashes:      validHashes,
+		Platform:       platform,
+	}
+}
+
+func (a packageHashAuthentication) AuthenticatePackage(localLocation PackageLocation) (*PackageAuthenticationResult, error) {
+	if len(a.RequiredHashes) == 0 {
+		return nil, fmt.Errorf("this version of Terraform does not upport any of the checksum formats given for this provider")
+	}
+	matches, err := PackageMatchesAnyHash(localLocation, a.RequiredHashes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify provider package checksums: %s", err)
+	}
+	if matches {
+		return &PackageAuthenticationResult{result: verifiedChecksum}, nil
+	}
+	if len(a.RequiredHashes) == 1 {
+		return nil, fmt.Errorf("provider package doesn't match the expected checksum %q", a.RequiredHashes[0].String())
+	}
+
+	return nil, fmt.Errorf("provider package doesn't match the any of the expected checksums")
+}
+
+func (a packageHashAuthentication) AcceptableHashes() []Hash {
+	return a.AllHashes
+}
+
+type archiveHashAuthentication struct {
+	Platform      Platform
+	WantSHA256Sum [sha256.Size]byte
 }
