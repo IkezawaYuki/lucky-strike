@@ -139,3 +139,37 @@ type archiveHashAuthentication struct {
 	Platform      Platform
 	WantSHA256Sum [sha256.Size]byte
 }
+
+func NewArchiveChecksumAuthentication(platform Platform, wantSha256Sum [sha256.Size]byte) PackageAuthentication {
+	return archiveHashAuthentication{Platform: platform, WantSHA256Sum: wantSha256Sum}
+}
+
+func (a archiveHashAuthentication) AuthenticatePackage(localLocation PackageLocation) (*PackageAuthenticationResult, error) {
+	archiveLocation, ok := localLocation.(PackageLocalArchive)
+	if !ok {
+		return nil, fmt.Errorf("cannot check archive hash for non-archive location %s", localLocation)
+	}
+
+	gotHash, err := PackageHashLegacyZipSHA(archiveLocation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute checksum for %s: %s", archiveLocation, err)
+	}
+
+	wantHash := HashLegacyZipSHAFromSHA(a.WantSHA256Sum)
+	if gotHash != wantHash {
+		return nil, fmt.Errorf("archive has incorrect checksum %s (expected %s)", gotHash, wantHash)
+	}
+	return &PackageAuthenticationResult{
+		result: verifiedChecksum,
+	}, nil
+}
+
+type matchingChecksumAuthentication struct {
+	Document      []byte
+	Filename      string
+	WantSHA256Sum [sha256.Size]byte
+}
+
+func NewMatchingChecksumAuthentication(document []byte, filename string, wantSHA256Sum [sha256.Size]byte) PackageAuthentication {
+
+}
