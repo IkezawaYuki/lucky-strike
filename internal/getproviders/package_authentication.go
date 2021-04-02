@@ -1,8 +1,10 @@
 package getproviders
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -171,5 +173,36 @@ type matchingChecksumAuthentication struct {
 }
 
 func NewMatchingChecksumAuthentication(document []byte, filename string, wantSHA256Sum [sha256.Size]byte) PackageAuthentication {
+	return matchingChecksumAuthentication{
+		Document:      document,
+		Filename:      filename,
+		WantSHA256Sum: wantSHA256Sum,
+	}
+}
 
+func (m matchingChecksumAuthentication) AuthenticatePackage(localLocation PackageLocation) (*PackageAuthenticationResult, error) {
+	filename := []byte(m.Filename)
+	var checksum []byte
+	for _, line := range bytes.Split(m.Document, []byte("\n")) {
+		parts := bytes.Fields(line)
+		if len(parts) > 1 && bytes.Equal(parts[1], filename) {
+			checksum = parts[0]
+			break
+		}
+	}
+
+	if checksum == nil {
+		return nil, fmt.Errorf("checksum list has no SHA-256 hash for %q", m.Filename)
+	}
+
+	var gotSHA256Sum [sha256.Size]byte
+	if _, err := hex.Decode(gotSHA256Sum[:], checksum); err != nil {
+		return nil, fmt.Errorf("checksum list has invalid SHA256 hash %q: %s", string(checksum), err)
+	}
+
+	if !bytes.Equal(gotSHA256Sum[:], m.WantSHA256Sum[:]) {
+		return nil, fmt.Errorf("checksum list has unexpected SHA-256 hash %x (expected %x)", gotSHA256Sum, m.WantSHA256Sum[:])
+	}
+
+	return nil, nil
 }
